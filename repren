@@ -346,6 +346,8 @@ def transform_file(transform, source_path, dest_path,
         if not dry_run and (dest_path != source_path or counts.found > 0):
             move_file(source_path, orig_path, clobber=True)
             move_file(temp_path, dest_path, clobber=False)
+            if clean:
+                os.remove(orig_path)
         else:
             # If we're in dry-run mode, or if there were no changes at all, just forget the output.
             os.remove(temp_path)
@@ -370,12 +372,12 @@ def transform_file(transform, source_path, dest_path,
     return counts
 
 
-def rewrite_file(path, patterns, do_renames=False, do_contents=False, by_line=False, dry_run=False):
+def rewrite_file(path, patterns, do_renames=False, do_contents=False, by_line=False, dry_run=False, clean=False):
     dest_path = multi_replace(path, patterns, is_path=True)[0] if do_renames else path
     transform = None
     if do_contents:
         transform = lambda contents: multi_replace(contents, patterns, source_name=path)
-    counts = transform_file(transform, path, dest_path, by_line=by_line, dry_run=dry_run)
+    counts = transform_file(transform, path, dest_path, by_line=by_line, dry_run=dry_run, clean=clean)
     if counts.found > 0:
         log("modify", "%s: %s matches" % (path.decode(), counts.found))
     if dest_path != path:
@@ -405,11 +407,12 @@ def rewrite_files(root_paths, patterns,
                   do_contents=False,
                   exclude_pat=DEFAULT_EXCLUDE_PAT,
                   by_line=False,
-                  dry_run=False):
+                  dry_run=False,
+                  clean=False):
     paths = walk_files(root_paths, exclude_pat=exclude_pat)
     log(None, "Found %s files in: %s" % (len(paths), ", ".join([path.decode() for path in root_paths])))
     for path in paths:
-        rewrite_file(path, patterns, do_renames=do_renames, do_contents=do_contents, by_line=by_line, dry_run=dry_run)
+        rewrite_file(path, patterns, do_renames=do_renames, do_contents=do_contents, by_line=by_line, dry_run=dry_run, clean=clean)
 
 # --- Invocation ---
 
@@ -490,6 +493,10 @@ if __name__ == '__main__':
                       help="dry run: just log matches without changing files",
                       dest="dry_run",
                       action="store_true")
+    parser.add_option("--clean",
+                      help="clean: delete backup files",
+                      dest="clean",
+                      action="store_true")
 
     (options, root_paths) = parser.parse_args()
     root_paths = [path.encode() for path in root_paths]
@@ -544,7 +551,8 @@ if __name__ == '__main__':
                           do_contents=options.do_contents,
                           exclude_pat=options.exclude_pat,
                           by_line=by_line,
-                          dry_run=options.dry_run)
+                          dry_run=options.dry_run,
+                          clean=options.clean)
 
             log(None, "Read %s files (%s chars), found %s matches (%s skipped due to overlaps)" %
                 (_tally.files, _tally.chars, _tally.valid_matches, _tally.matches - _tally.valid_matches))
