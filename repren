@@ -323,7 +323,8 @@ def transform_file(transform, source_path, dest_path,
                    orig_suffix=BACKUP_SUFFIX,
                    temp_suffix=TEMP_SUFFIX,
                    by_line=False,
-                   dry_run=False):
+                   dry_run=False,
+                   clean=False):
     '''Transform full contents of file at source_path with specified function,
   either line-by-line or at once in memory, writing dest_path atomically and keeping a backup.
   Source and destination may be the same path.'''
